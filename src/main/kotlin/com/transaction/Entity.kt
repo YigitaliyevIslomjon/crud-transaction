@@ -1,123 +1,128 @@
 package com.transaction
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.Table
+import jakarta.persistence.*
+import org.springframework.security.core.userdetails.UserDetails
 import java.math.BigDecimal
 import java.util.Date
 
+
 @Entity
-data class Category(
+class RefreshToken(
+    val token: String,
+    val userDetails: UserDetails,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
-    @Column(nullable = false)
-    val name: String,
-
-    @Column(nullable = false)
-    val order: Long,
-
-    @Column(nullable = false)
-    val description: String,
 )
 
 @Entity
-data class Product(
+class Category(
+    @Column(nullable = false)
+    val name: String,
+    @Column(nullable = false)
+    val orderValue: Long,
+    @Column(nullable = false)
+    val description: String,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
+    @OneToMany(mappedBy = "category", cascade = [CascadeType.ALL])
+    val products: List<Product> = ArrayList(),
+)
 
+@Entity
+class Product(
     @Column(nullable = false)
     val name: String,
-
     @Column(nullable = false)
     val count: Long,
-
     @ManyToOne
-    @JoinColumn(name = "category_id")
     val category: Category,
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+    @OneToMany(mappedBy = "product", cascade = [CascadeType.ALL])
+    val transactionItems: List<TransactionItem> = ArrayList(),
 )
 
 
 @Entity
 @Table(name = "users")
-data class User(
+class User(
+    @Column(nullable = false)
+    val fullName: String,
+    @Column(nullable = false, unique = true)
+    val username: String,
+    @Column(nullable = false)
+    var balance: BigDecimal,
+    @Column(nullable = false)
+    var password: String,
+    @ManyToMany(fetch = FetchType.EAGER)
+    val roles: Set<Role> = hashSetOf(),
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
+    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL])
+    val transactions: List<Transaction> = ArrayList(),
+    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL])
+    var userPaymentTransactions: List<UserPaymentTransaction> = ArrayList(),
+)
 
-    @Column(nullable = false)
-    val fullName: String,
-
-    @Column(nullable = false, unique = true)
-    val username: String,
-
-    @Column(nullable = false)
-    val balance: BigDecimal,
+@Entity
+@Table(name = "roles")
+class Role(
+    @Column(unique = true)
+    @Enumerated(EnumType.STRING)
+    val name: UserRole,
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
 )
 
 @Entity
 data class UserPaymentTransaction(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
-
     @ManyToOne
-    @JoinColumn(name = "user_id")
     val user: User,
-
     @Column(nullable = false)
     val amount: BigDecimal,
-
     @Column(nullable = false)
-    val data: Date,
-)
-
-@Entity
-data class Transaction(
+    val date: Date,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
+)
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+@Entity
+class Transaction(
+    @ManyToOne(fetch = FetchType.LAZY)
     val user: User,
-
     @Column(nullable = false)
     val totalAmount: BigDecimal,
-
     @Column(nullable = false)
-    val data: Date,
-)
-
-@Entity
-data class TransactionItem(
+    val date: Date,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
+    @OneToMany(mappedBy = "transaction", cascade = [CascadeType.ALL])
+    var transactionItems: List<TransactionItem> = ArrayList(),
+)
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
-    val product: Product,
 
+@Entity
+class TransactionItem(
     @Column(nullable = false)
     val count: Long,
-
     @Column(nullable = false)
     val amount: BigDecimal,
-
     @Column(nullable = false)
     val totalAmount: BigDecimal,
-
-    @ManyToOne()
-    @JoinColumn(name = "transaction_id")
-    val transaction: Transaction,
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+    @ManyToOne
+    val product: Product? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    var transaction: Transaction? = null,
 )
 
 

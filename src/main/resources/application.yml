@@ -1,0 +1,22 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    password: 123
+    username: postgres
+    url: jdbc:postgresql://localhost:5432/transaction
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+        hibernate:
+          dialect=org:
+            hibernate:
+              dialect:
+                PostgreSQLDialect:
+jwt:
+  key: ${JWT_KEY}
+  access-token-expiration: 36000000
+  refresh-token-expiration: 86400000
+
