@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
@@ -41,7 +40,7 @@ class SecurityConfig(
                 .requestMatchers(HttpMethod.POST, "api/role/add").permitAll()
                 .requestMatchers(
                     HttpMethod.POST,
-                    "api/user-payment-transaction/add","api/user/id",
+                    "api/user-payment-transaction/add", "api/user/id",
                 )
                 .hasAuthority("USER")
                 .requestMatchers(
@@ -76,7 +75,7 @@ class SecurityConfig(
         return AccessDeniedHandler { request: HttpServletRequest, response: HttpServletResponse, accessDeniedException: AccessDeniedException ->
             response.status = HttpServletResponse.SC_FORBIDDEN
             response.contentType = "application/json"
-            response.writer.write("{\"message\": \"Access denied: ${accessDeniedException.message}\"}")
+            response.writer.write("{'message': 'Access denied: ${accessDeniedException.message}'}")
         }
     }
 }
@@ -88,7 +87,6 @@ class Configurations {
     fun userDetailsService(userRepository: UserRepository): UserDetailsService {
         return UserDetailsServiceImpl(userRepository)
     }
-
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
@@ -107,7 +105,6 @@ class Configurations {
         return config.getAuthenticationManager()
     }
 }
-
 
 @ConfigurationProperties("jwt")
 data class JwtProperties(

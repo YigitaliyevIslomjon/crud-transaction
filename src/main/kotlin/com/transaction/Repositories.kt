@@ -2,7 +2,6 @@ package com.transaction
 
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
-import org.springframework.data.repository.query.Param
 
 interface CategoryRepository : JpaRepository<Category, Long> {
     /*    @Query(value = "select a from Category a")//JPQL - java persistence query language
@@ -14,6 +13,7 @@ interface CategoryRepository : JpaRepository<Category, Long> {
 
 interface ProductRepository : JpaRepository<Product, Long> {}
 interface UserRepository : JpaRepository<User, Long> {
+    fun existsByUsername(username: String): Boolean
     fun findUserByUsername(username: String): User?
 }
 
@@ -40,7 +40,6 @@ interface TransactionItemRepository : JpaRepository<TransactionItem, Long> {
     fun findAllByUsername(username: String): List<TransactionItem>
 }
 
-interface RoleRepository : JpaRepository<Role, Long> {}
 
 interface RefreshTokenRepository : JpaRepository<RefreshToken, Long> {
     fun findByToken(token: String): RefreshToken?
