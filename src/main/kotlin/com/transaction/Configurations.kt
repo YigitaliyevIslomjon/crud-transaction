@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.support.ResourceBundleMessageSource
-import org.springframework.http.HttpMethod
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
@@ -45,30 +44,6 @@ class SecurityConfig(
     ): DefaultSecurityFilterChain {
         http.csrf { it.disable() }.authorizeHttpRequests {
             it.requestMatchers("api/v1/auth/sign-in", "api/v1/auth/refresh").permitAll().anyRequest().authenticated()
-//                .permitAll()
-//                .requestMatchers(
-//                    HttpMethod.POST,
-//                    "${API_PREFIX}/user-payment-transaction", "${API_PREFIX}/user/{id}",
-//                )
-//                .hasAnyAuthority("USER","ADMIN")
-//                .requestMatchers(
-//                    HttpMethod.PUT,
-//                    "${API_PREFIX}/user/{id}",
-//                )
-//                .hasAnyAuthority("USER","ADMIN")
-//                .requestMatchers(
-//                    HttpMethod.GET,
-//                    "${API_PREFIX}/user-payment-transaction", "${API_PREFIX}/transaction-item"
-//                )
-//                .hasAnyAuthority("USER","ADMIN")
-//                .requestMatchers(
-//                    "${API_PREFIX}/category/*",
-//                    "${API_PREFIX}/user-payment-transaction/*",
-//                    "${API_PREFIX}/transaction-item/*",
-//                    "${API_PREFIX}/transaction/*",
-//                    "${API_PREFIX}/product/*",
-//                    "${API_PREFIX}/user/*"
-//                ).hasAnyAuthority("ADMIN").anyRequest().authenticated()
         }.sessionManagement {
             it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         }.authenticationProvider(authenticationProvider)
@@ -132,11 +107,6 @@ class MyWebMvcConfigurer : WebMvcConfigurer {
         setBasename("errors")
     }
 
-    @Bean
-    fun messageMessageSource() = ResourceBundleMessageSource().apply {
-        setDefaultEncoding(Charsets.UTF_8.name())
-        setBasename("messages")
-    }
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(object : AsyncHandlerInterceptor {

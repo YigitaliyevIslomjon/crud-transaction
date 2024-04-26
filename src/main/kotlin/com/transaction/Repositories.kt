@@ -1,6 +1,7 @@
 package com.transaction
 
 import jakarta.persistence.EntityManager
+import jakarta.transaction.Transactional
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.domain.Specification
@@ -26,6 +27,7 @@ class BaseRepositoryImpl<T : BaseEntity>(
     entityManager: EntityManager,
 ) : SimpleJpaRepository<T, Long>(entityInformation, entityManager), BaseRepository<T> {
     val isNotDeletedSpecification = Specification<T> { root, _, cb -> cb.equal(root.get<Boolean>("deleted"), false) }
+    @Transactional
     override fun trash(id: Long) = save(findById(id).get().apply { deleted = true })
     override fun findAllNotDeleted(pageable: Pageable) = findAll(isNotDeletedSpecification, pageable)
     override fun findAllNotDeleted(): List<T> = findAll(isNotDeletedSpecification)

@@ -47,7 +47,6 @@ class ExceptionControllerAdvice(
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleValidationException(ex: MethodArgumentNotValidException): Map<String, String> {
-        println(ex.message)
         val errors = ex.bindingResult.allErrors.map { error -> error.defaultMessage }
         return mapOf("errors" to errors.joinToString(", "))
     }
