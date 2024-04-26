@@ -50,17 +50,6 @@ class ExceptionControllerAdvice(
         val errors = ex.bindingResult.allErrors.map { error -> error.defaultMessage }
         return mapOf("errors" to errors.joinToString(", "))
     }
-
-    @ExceptionHandler(AccessDeniedException::class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    fun handleAccessDeniedException(ex: AccessDeniedException): ResponseEntity<BaseMessage> {
-        val errorMessage = BaseMessage(
-            HttpStatus.FORBIDDEN.value(),
-            ex.message
-        )
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(errorMessage)
-    }
 }
 
 sealed class BaseException : RuntimeException() {

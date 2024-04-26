@@ -68,12 +68,10 @@ class Configurations {
     fun userDetailsService(userRepository: UserRepository): UserDetailsService {
         return UserDetailsServiceImpl(userRepository)
     }
-
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
     }
-
     @Bean
     fun authenticationProvider(userRepository: UserRepository): AuthenticationProvider {
         val authenticationProvider = DaoAuthenticationProvider()
@@ -101,13 +99,11 @@ class MyWebMvcConfigurer : WebMvcConfigurer {
     @Bean
     fun localeResolver() = SessionLocaleResolver().apply { setDefaultLocale(Locale("uz")) }
 
-
     @Bean
     fun errorMessageSource() = ResourceBundleMessageSource().apply {
         setDefaultEncoding(Charsets.UTF_8.name())
         setBasename("errors")
     }
-
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(object : AsyncHandlerInterceptor {
