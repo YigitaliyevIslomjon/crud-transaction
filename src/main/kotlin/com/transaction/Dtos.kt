@@ -1,9 +1,16 @@
 package com.transaction
 
 import java.math.BigDecimal
+import java.util.*
 
 
-data class AuthDto(
+data class BaseMessage(
+    val code: Int,
+    val message: String?
+)
+
+
+data class SignInDto(
     val username: String,
     val password: String,
 )
@@ -119,7 +126,9 @@ data class GetProductDto(
 data class CreateUserPaymentTransactionDto(
     val userId: Long,
     val amount: BigDecimal,
-)
+){
+    fun toEntity(user: User): UserPaymentTransaction = UserPaymentTransaction(user, amount, date = Date())
+}
 
 data class GetUserPaymentTransactionDto(
     val userId: Long,

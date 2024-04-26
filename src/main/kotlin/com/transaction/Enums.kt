@@ -5,6 +5,7 @@ enum class Role {
     ADMIN,
     SUPER_ADMIN
 }
+
 enum class ErrorCode(val code: Int) {
     USERNAME_EXIST(100),
     USER_NOT_FOUND(101),
@@ -13,5 +14,6 @@ enum class ErrorCode(val code: Int) {
     USER_PAYMENT_TRANSACTION_NOT_FOUND(104),
     TRANSACTION_NOT_FOUND(105),
     TRANSACTION_ITEM_NOT_FOUND(106),
-    NOT_ENOUGH_MONEY(107)
+    NOT_ENOUGH_MONEY(107),
+    USER_AUTHORIZATION_FAILURE_EXCEPTION(108)
 }

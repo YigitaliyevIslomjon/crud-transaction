@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpMethod
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationManager
@@ -22,6 +23,13 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.DefaultSecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.servlet.AsyncHandlerInterceptor
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import org.springframework.web.servlet.i18n.SessionLocaleResolver
+import org.springframework.web.servlet.support.RequestContextUtils
+import java.util.*
+
 
 @Configuration
 @EnableWebSecurity
@@ -29,40 +37,38 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val authenticationProvider: AuthenticationProvider,
 ) {
+
     @Bean
     fun securityFilterChain(
         http: HttpSecurity,
         jwtAuthFilter: JwtAuthFilter
     ): DefaultSecurityFilterChain {
         http.csrf { it.disable() }.authorizeHttpRequests {
-            it.requestMatchers("api/auth/sign-in", "api/user/sign-up", "api/auth/refresh")
-                .permitAll()
-                .requestMatchers(HttpMethod.POST, "api/role/add").permitAll()
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "api/user-payment-transaction/add", "api/user/id",
-                )
-                .hasAuthority("USER")
-                .requestMatchers(
-                    HttpMethod.PUT,
-                    "api/user/{id}",
-                )
-                .hasAuthority("USER")
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "api/user-payment-transaction/pageable", "api/transaction-item/pageable"
-                )
-                .hasAuthority("USER")
-                .requestMatchers(
-                    "api/category/*",
-                    "api/user-payment-transaction/*",
-                    "api/transaction-item/*",
-                    "api/transaction/*",
-                    "api/product/*",
-                    "api/role/*",
-                    "api/user/*"
-                ).hasAnyAuthority("ADMIN")
-                .anyRequest().authenticated()
+            it.requestMatchers("api/v1/auth/sign-in", "api/v1/auth/refresh").permitAll().anyRequest().authenticated()
+//                .permitAll()
+//                .requestMatchers(
+//                    HttpMethod.POST,
+//                    "${API_PREFIX}/user-payment-transaction", "${API_PREFIX}/user/{id}",
+//                )
+//                .hasAnyAuthority("USER","ADMIN")
+//                .requestMatchers(
+//                    HttpMethod.PUT,
+//                    "${API_PREFIX}/user/{id}",
+//                )
+//                .hasAnyAuthority("USER","ADMIN")
+//                .requestMatchers(
+//                    HttpMethod.GET,
+//                    "${API_PREFIX}/user-payment-transaction", "${API_PREFIX}/transaction-item"
+//                )
+//                .hasAnyAuthority("USER","ADMIN")
+//                .requestMatchers(
+//                    "${API_PREFIX}/category/*",
+//                    "${API_PREFIX}/user-payment-transaction/*",
+//                    "${API_PREFIX}/transaction-item/*",
+//                    "${API_PREFIX}/transaction/*",
+//                    "${API_PREFIX}/product/*",
+//                    "${API_PREFIX}/user/*"
+//                ).hasAnyAuthority("ADMIN").anyRequest().authenticated()
         }.sessionManagement {
             it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         }.authenticationProvider(authenticationProvider)
@@ -113,4 +119,35 @@ data class JwtProperties(
     val refreshTokenExpiration: Long,
 )
 
+
+@Configuration
+class MyWebMvcConfigurer : WebMvcConfigurer {
+    @Bean
+    fun localeResolver() = SessionLocaleResolver().apply { setDefaultLocale(Locale("uz")) }
+
+
+    @Bean
+    fun errorMessageSource() = ResourceBundleMessageSource().apply {
+        setDefaultEncoding(Charsets.UTF_8.name())
+        setBasename("errors")
+    }
+
+    @Bean
+    fun messageMessageSource() = ResourceBundleMessageSource().apply {
+        setDefaultEncoding(Charsets.UTF_8.name())
+        setBasename("messages")
+    }
+
+    override fun addInterceptors(registry: InterceptorRegistry) {
+        registry.addInterceptor(object : AsyncHandlerInterceptor {
+            override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
+                request.getHeader("hl")?.let {
+                    RequestContextUtils.getLocaleResolver(request)
+                        ?.setLocale(request, response, Locale(it))
+                }
+                return true
+            }
+        })
+    }
+}
 

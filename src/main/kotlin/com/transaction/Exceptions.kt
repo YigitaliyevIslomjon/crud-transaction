@@ -1,6 +1,9 @@
 package com.transaction
 
 import io.jsonwebtoken.ExpiredJwtException
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
+import org.springframework.context.support.ResourceBundleMessageSource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -13,32 +16,14 @@ import org.springframework.web.context.request.WebRequest
 import org.springframework.web.servlet.NoHandlerFoundException
 
 @ControllerAdvice
-class ExceptionControllerAdvice {
+class ExceptionControllerAdvice(
+    private val errorMessageSource: ResourceBundleMessageSource
+) {
 
     @ExceptionHandler(BaseException::class)
-    fun handleBaseException(baseException: BaseException): ResponseEntity<*> {
-        return ResponseEntity.badRequest().body(baseException.getModel())
+    fun handleBaseException(e: BaseException): ResponseEntity<*> {
+        return ResponseEntity.badRequest().body(e.toResponse(errorMessageSource))
     }
-
-    @ExceptionHandler(EntityNotFoundException::class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    fun handleEntityNotFoundExceptionError(ex: Exception): ResponseEntity<ErrorMessageModel> {
-        val errorMessage = ErrorMessageModel(
-            HttpStatus.NOT_FOUND.value(),
-            ex.message
-        )
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(errorMessage)
-    }
-
-//    @ExceptionHandler
-//    fun handleIllegalStateException(ex: IllegalStateException): ResponseEntity<ErrorMessageModel> {
-//        val errorMessage = ErrorMessageModel(
-//            HttpStatus.NOT_FOUND.value(),
-//            ex.message
-//        )
-//        return ResponseEntity(errorMessage, HttpStatus.BAD_REQUEST)
-//    }
 
     @ExceptionHandler(NoHandlerFoundException::class)
     fun handleNotFoundException(ex: NoHandlerFoundException): ResponseEntity<String> {
@@ -56,7 +41,7 @@ class ExceptionControllerAdvice {
     ): ResponseEntity<Any> {
         val errorMessage = "Unsupported media type. Please use a valid media type."
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-            .body(ErrorMessageModel(message = errorMessage, status = HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()))
+            .body(BaseMessage(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), errorMessage))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -69,86 +54,70 @@ class ExceptionControllerAdvice {
 
     @ExceptionHandler(AccessDeniedException::class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    fun handleAccessDeniedException(ex: AccessDeniedException): ResponseEntity<ErrorMessageModel> {
-        val errorMessage = ErrorMessageModel(
+    fun handleAccessDeniedException(ex: AccessDeniedException): ResponseEntity<BaseMessage> {
+        val errorMessage = BaseMessage(
             HttpStatus.FORBIDDEN.value(),
             ex.message
         )
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(errorMessage)
     }
-
-//    @ExceptionHandler(Exception::class)
-//    fun handleOtherException(ex: Exception): ResponseEntity<ErrorMessageModel> {
-//        val exceptionId = UUID.randomUUID()
-//        println("${exceptionId} : [${ex.stackTraceToString()}]")
-//        return ResponseEntity.status(HttpStatus.CONFLICT)
-//            .body(ErrorMessageModel(message = "Qanaqadur xatoli($exceptionId)", status = HttpStatus.CONFLICT.value()))
-//    }
-
 }
 
-abstract class BaseException(private val msg: String? = null) : RuntimeException(msg) {
+sealed class BaseException : RuntimeException() {
     abstract fun errorCode(): ErrorCode
-    abstract fun getModel(): ErrorMessageModel
+    open fun getErrorMessageArguments(): Array<Any?>? = null
+    fun toResponse(messageSource: MessageSource): BaseMessage {
+        return BaseMessage(
+            errorCode().code,
+            messageSource
+                .getMessage(errorCode().name, getErrorMessageArguments(), LocaleContextHolder.getLocale())
+        )
+    }
 }
 
-class UsernameExistException(msg: String) : BaseException(msg) {
+class UsernameExistException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.USERNAME_EXIST
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
-}
-class UserNotFoundException(msg: String) : BaseException(msg) {
-    override fun errorCode() = ErrorCode.USER_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
-
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
 
-class CategoryNotFoundException(msg: String) : BaseException(msg) {
+class UserNotFoundException(private val msg: String) : BaseException() {
+    override fun errorCode(): ErrorCode = ErrorCode.USER_NOT_FOUND
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
+}
+
+class CategoryNotFoundException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.CATEGORY_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
-class ProductNotFoundException(msg: String) : BaseException(msg) {
+
+class ProductNotFoundException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.PRODUCT_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
 
-class UserPaymentTransactionNotFoundException(msg: String) : BaseException(msg) {
+class UserPaymentTransactionNotFoundException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.USER_PAYMENT_TRANSACTION_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
 
-class TransactionNotFoundException(msg: String) : BaseException(msg) {
+class TransactionNotFoundException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.TRANSACTION_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
 
-class TransactionItemNotFoundException(msg: String) : BaseException(msg) {
+class TransactionItemNotFoundException(private val msg: String) : BaseException() {
     override fun errorCode() = ErrorCode.TRANSACTION_ITEM_NOT_FOUND
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
-}
-class NotEnoughMoneyException(msg: String) : BaseException(msg) {
-    override fun errorCode() = ErrorCode.NOT_ENOUGH_MONEY
-    override fun getModel(): ErrorMessageModel {
-        return ErrorMessageModel(errorCode().code, message)
-    }
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
 }
 
-class EntityNotFoundException(message: String) : RuntimeException(message)
-class ErrorMessageModel(
-    var status: Int? = null,
-    var message: String? = null
-)
+class NotEnoughMoneyException(private val msg: String) : BaseException() {
+    override fun errorCode() = ErrorCode.NOT_ENOUGH_MONEY
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
+}
+
+class UserAuthorizationFailureException(private val msg: String) : BaseException() {
+    override fun errorCode() = ErrorCode.USER_AUTHORIZATION_FAILURE_EXCEPTION
+    override fun getErrorMessageArguments(): Array<Any?> = arrayOf(msg)
+}
+

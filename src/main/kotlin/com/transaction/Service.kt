@@ -4,7 +4,8 @@ import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.io.Decoders
 import io.jsonwebtoken.security.Keys
-import org.springframework.data.repository.findByIdOrNull
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -29,7 +30,7 @@ interface UserService {
 }
 
 interface AuthService {
-    fun signIn(dto: AuthDto): AuthDtoResponse
+    fun signIn(dto: SignInDto): AuthDtoResponse
     fun refreshAccessToken(dto: RefreshTokenRequestDto): RefreshTokenResponseDto
 }
 
@@ -61,7 +62,7 @@ interface TransactionService {
     fun create(dto: TransactionDto): GetTransactionDto
     fun delete(id: Long)
     fun getById(id: Long): GetTransactionDto
-    fun getAll(): List<GetTransactionDto>
+    fun getAll(pageable: Pageable): Page<GetTransactionDto>
 }
 
 interface TransactionItemService {
@@ -84,8 +85,8 @@ class UserServiceImpl(
     }
 
     override fun update(id: Long, dto: UserUpdateDto): GetUserDto = dto.run {
-        val user = userRepository.findByIdOrNull(id)
-            ?: throw EntityNotFoundException("id $id is not found")
+        val user = userRepository.findByIdNotDeleted(id)
+            ?: throw UserNotFoundException("userId $id is not found")
 
         username?.let {
             if (user.username != it && userRepository.existsByUsername(it))
@@ -107,20 +108,19 @@ class UserServiceImpl(
     }
 
     override fun delete(id: Long) {
-        userRepository.findByIdOrNull(id)
+        userRepository.findByIdNotDeleted(id)
             ?: throw UserNotFoundException(" userid $id is not found")
-        userRepository.deleteById(id)
+        userRepository.trash(id)
     }
 
     override fun getById(id: Long): GetUserDto {
-        val user = userRepository.findByIdOrNull(id)
+        val user = userRepository.findByIdNotDeleted(id)
             ?: throw UserNotFoundException("id $id is not found")
         return GetUserDto.toResponse(user)
     }
 
     override fun getAll(): List<GetUserDto> =
-        userRepository.findAll().map(GetUserDto.Companion::toResponse)
-
+        userRepository.findAllNotDeleted().map(GetUserDto.Companion::toResponse)
 }
 
 @Service
@@ -131,7 +131,7 @@ class AuthServiceImpl(
     private val jwtProperties: JwtProperties,
     private val refreshTokenRepository: RefreshTokenRepository,
 ) : AuthService {
-    override fun signIn(@RequestBody dto: AuthDto): AuthDtoResponse {
+    override fun signIn(@RequestBody dto: SignInDto): AuthDtoResponse {
 
         val user = userDetailsService.loadUserByUsername(dto.username)
         authenticationManager.authenticate(
@@ -224,7 +224,7 @@ class CategoryServiceImpl(
         GetCategoryDto.toResponse(categoryRepository.save(dto.toEntity()))
 
     override fun update(id: Long, dto: UpdateCategoryDto): GetCategoryDto = dto.run {
-        val category = categoryRepository.findByIdOrNull(id)
+        val category = categoryRepository.findByIdNotDeleted(id)
             ?: throw CategoryNotFoundException("category id $id is not found")
         name?.let {
             category.name = name
@@ -239,19 +239,19 @@ class CategoryServiceImpl(
     }
 
     override fun delete(id: Long) {
-        categoryRepository.findByIdOrNull(id)
+        categoryRepository.findByIdNotDeleted(id)
             ?: throw CategoryNotFoundException("category id $id is not found")
-        categoryRepository.deleteById(id)
+        categoryRepository.trash(id)
     }
 
     override fun getById(id: Long): GetCategoryDto {
-        val category = categoryRepository.findByIdOrNull(id)
-            ?: throw EntityNotFoundException("category id $id is not found")
+        val category = categoryRepository.findByIdNotDeleted(id)
+            ?: throw CategoryNotFoundException("category id $id is not found")
         return GetCategoryDto.toResponse(category)
     }
 
     override fun getAll(): List<GetCategoryDto> {
-        return categoryRepository.findAll().map(GetCategoryDto.Companion::toResponse)
+        return categoryRepository.findAllNotDeleted().map(GetCategoryDto.Companion::toResponse)
     }
 }
 
@@ -261,66 +261,69 @@ class ProductServiceImpl(
     val productRepository: ProductRepository,
 ) : ProductService {
     override fun create(dto: CreateProductDto): GetProductDto {
-        val category = categoryRepository.findByIdOrNull(dto.categoryId)
+        val category = categoryRepository.findByIdNotDeleted(dto.categoryId)
             ?: throw ProductNotFoundException("${dto.categoryId} is not found")
         val product = productRepository.save(dto.toEntity(category))
         return GetProductDto.toResponse(product)
     }
 
     override fun update(id: Long, dto: UpdateProductDto): GetProductDto = dto.run {
-        val category = categoryRepository.findByIdOrNull(categoryId)
-            ?: throw CategoryNotFoundException("category id $categoryId is not found")
 
         val product =
-            productRepository.findByIdOrNull(id)
+            productRepository.findByIdNotDeleted(id)
                 ?: throw ProductNotFoundException("product id $id is not found")
 
         name?.let {
             product.name = name
         }
+
         categoryId?.let {
+            val category = categoryRepository.findByIdNotDeleted(categoryId)
+                ?: throw CategoryNotFoundException("category id $categoryId is not found")
             product.category = category
         }
         count?.let {
             product.count = count
         }
+
         GetProductDto.toResponse(productRepository.save(product))
     }
 
     override fun delete(id: Long) {
-        productRepository.findByIdOrNull(id)
+        productRepository.findByIdNotDeleted(id)
             ?: throw ProductNotFoundException("productId $id is not found")
-        productRepository.deleteById(id)
+        productRepository.trash(id)
     }
 
     override fun getById(id: Long): GetProductDto {
-        val product = productRepository.findByIdOrNull(id)
+        val product = productRepository.findByIdNotDeleted(id)
             ?: throw ProductNotFoundException("productId $id is not found")
         return GetProductDto.toResponse(product)
     }
 
     override fun getAll(): List<GetProductDto> {
-        return productRepository.findAll().map(GetProductDto.Companion::toResponse)
+        return productRepository.findAllNotDeleted().map(GetProductDto.Companion::toResponse)
     }
 }
 
 @Service
 class TransactionServiceImpl(
-    val userRepository: UserRepository,
-    val transactionRepository: TransactionRepository,
-    val productRepository: ProductRepository
+    private val userRepository: UserRepository,
+    private val transactionRepository: TransactionRepository,
+    private val transactionItemRepository: TransactionItemRepository,
+    private val productRepository: ProductRepository
 ) : TransactionService {
 
     @Transactional
     override fun create(dto: TransactionDto) = dto.run {
-        val user = userRepository.findByIdOrNull(dto.userId)
+        val user = userRepository.findByIdNotDeleted(dto.userId)
             ?: throw UserNotFoundException("userId ${dto.userId} is not found")
 
         val transactionItems = mutableListOf<TransactionItem>()
         var totalAmountTransaction = BigDecimal.ZERO
 
         dto.items.forEach { itemDto ->
-            val product = productRepository.findByIdOrNull(itemDto.productId)
+            val product = productRepository.findByIdNotDeleted(itemDto.productId)
                 ?: throw ProductNotFoundException("productId ${itemDto.productId} is not found")
 
             val totalAmount = itemDto.count.toBigDecimal() * itemDto.amount
@@ -338,12 +341,11 @@ class TransactionServiceImpl(
         var transaction = Transaction(
             user = user,
             totalAmount = totalAmountTransaction,
-            date = Date()
         )
 
         transactionItems.forEach { it.transaction = transaction }
-        transaction.transactionItems = transactionItems
 
+        transactionItemRepository.saveAll(transactionItems)
         transaction = transactionRepository.save(transaction)
 
         if (user.balance >= transaction.totalAmount) {
@@ -351,25 +353,25 @@ class TransactionServiceImpl(
         } else {
             throw NotEnoughMoneyException("you don't have enough money, your balance is ${user.balance}, totalAmount is ${transaction.totalAmount}")
         }
-
+        userRepository.save(user)
         GetTransactionDto.toResponse(transaction)
     }
 
     override fun delete(id: Long) {
-        transactionRepository.findByIdOrNull(id)
+        transactionRepository.findByIdNotDeleted(id)
             ?: throw TransactionNotFoundException("transactionId $id is not found")
-        transactionRepository.deleteById(id)
+        transactionRepository.trash(id)
     }
 
     override fun getById(id: Long): GetTransactionDto {
-        val transaction = transactionRepository.findByIdOrNull(id)
+        val transaction = transactionRepository.findByIdNotDeleted(id)
             ?: throw TransactionNotFoundException("transactionId $id is not found")
 
         return GetTransactionDto.toResponse(transaction)
     }
 
-    override fun getAll(): List<GetTransactionDto> {
-        return transactionRepository.findAll().map(GetTransactionDto.Companion::toResponse)
+    override fun getAll(pageable: Pageable): Page<GetTransactionDto> {
+        return transactionRepository.findAllNotDeleted(pageable).map(GetTransactionDto.Companion::toResponse)
     }
 }
 
@@ -379,22 +381,22 @@ class TransactionItemServiceImpl(
 ) : TransactionItemService {
 
     override fun delete(id: Long) {
-        transactionItemRepository.findByIdOrNull(id)
+        transactionItemRepository.findByIdNotDeleted(id)
             ?: throw TransactionItemNotFoundException("transactionItemId $id is not found")
-        transactionItemRepository.deleteById(id)
+        transactionItemRepository.trash(id)
     }
 
     override fun getById(id: Long): GetTransactionItemDto {
-        val existingTransactionItem = transactionItemRepository.findByIdOrNull(id)
+        val transactionItem = transactionItemRepository.findByIdNotDeleted(id)
             ?: throw TransactionItemNotFoundException("transactionItemId $id is not found")
-        return GetTransactionItemDto.toResponse(existingTransactionItem)
+        return GetTransactionItemDto.toResponse(transactionItem)
     }
 
     override fun getAll(): List<GetTransactionItemDto> {
         val authentication = SecurityContextHolder.getContext().authentication
         authentication.authorities.forEach {
             if (it.authority == "ADMIN") {
-                return transactionItemRepository.findAll().map(GetTransactionItemDto.Companion::toResponse)
+                return transactionItemRepository.findAllNotDeleted().map(GetTransactionItemDto.Companion::toResponse)
             }
 
             if (it.authority == "USER") {
@@ -404,6 +406,7 @@ class TransactionItemServiceImpl(
         }
         throw IllegalStateException("user can not access")
     }
+
 }
 
 @Service
@@ -412,24 +415,24 @@ class UserPaymentTransactionServiceImpl(
     val userPaymentTransactionRepository: UserPaymentTransactionRepository
 ) : UserPaymentTransactionService {
     override fun create(dto: CreateUserPaymentTransactionDto) = dto.run {
-        val user = userRepository.findByIdOrNull(dto.userId)
+        var user = userRepository.findByIdNotDeleted(dto.userId)
             ?: throw UserNotFoundException("userId ${dto.userId} is not found")
         user.balance += dto.amount
-        val userPaymentTransaction = UserPaymentTransaction(user, amount, date = Date())
-        user.userPaymentTransactions =
-            arrayListOf(userPaymentTransaction)
-        userRepository.save(user)
+        user = userRepository.save(user)
+
+        val userPaymentTransaction =
+            userPaymentTransactionRepository.save(dto.toEntity(user))
         GetUserPaymentTransactionDto.toResponse(userPaymentTransaction)
     }
 
     override fun delete(id: Long) {
-        userPaymentTransactionRepository.findByIdOrNull(id)
+        userPaymentTransactionRepository.findByIdNotDeleted(id)
             ?: throw UserPaymentTransactionNotFoundException("userPaymentTransactionId $id is not found")
-        userPaymentTransactionRepository.deleteById(id)
+        userPaymentTransactionRepository.trash(id)
     }
 
     override fun getById(id: Long): GetUserPaymentTransactionDto {
-        val userPaymentTransaction = userPaymentTransactionRepository.findByIdOrNull(id)
+        val userPaymentTransaction = userPaymentTransactionRepository.findByIdNotDeleted(id)
             ?: throw UserPaymentTransactionNotFoundException("userPaymentTransactionId $id is not found")
 
         return GetUserPaymentTransactionDto.toResponse(userPaymentTransaction)
@@ -440,7 +443,7 @@ class UserPaymentTransactionServiceImpl(
         println(authentication.name)
         authentication.authorities.forEach {
             if (it.authority == "ADMIN") {
-                return userPaymentTransactionRepository.findAll()
+                return userPaymentTransactionRepository.findAllNotDeleted()
                     .map(GetUserPaymentTransactionDto.Companion::toResponse)
             }
 
@@ -449,7 +452,7 @@ class UserPaymentTransactionServiceImpl(
                     .map(GetUserPaymentTransactionDto.Companion::toResponse)
             }
         }
-        throw IllegalStateException("user cann't access")
+        throw UserAuthorizationFailureException("user can't access this data")
     }
 }
 
