@@ -322,16 +322,16 @@ class TransactionServiceImpl(
         val transactionItems = mutableListOf<TransactionItem>()
         var totalAmountTransaction = BigDecimal.ZERO
 
-        dto.items.forEach { itemDto ->
-            val product = productRepository.findByIdNotDeleted(itemDto.productId)
-                ?: throw ProductNotFoundException("productId ${itemDto.productId} is not found")
+        dto.items.forEach { item ->
+            val product = productRepository.findByIdNotDeleted(item.productId)
+                ?: throw ProductNotFoundException("productId ${item.productId} is not found")
 
-            val totalAmount = itemDto.count.toBigDecimal() * itemDto.amount
+            val totalAmount = item.count.toBigDecimal() * item.amount
             totalAmountTransaction += totalAmount
 
             val transactionItem = TransactionItem(
-                count = itemDto.count,
-                amount = itemDto.amount,
+                count = item.count,
+                amount = item.amount,
                 totalAmount = totalAmount,
                 product = product
             )
