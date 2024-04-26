@@ -157,8 +157,6 @@ class AuthServiceImpl(
         return extractedUsername.let { username ->
             val currentUserDetails = userDetailsService.loadUserByUsername(username)
             val refreshTokenUserDetails = refreshTokenRepository.findByToken(dto.token)
-            println(refreshTokenUserDetails)
-            println(refreshTokenUserDetails?.userDetails)
             if (!jwtService.isTokenExpired(dto.token) && refreshTokenUserDetails?.userDetails?.username == currentUserDetails.username)
                 RefreshTokenResponseDto(createAccessToken(currentUserDetails))
             else
