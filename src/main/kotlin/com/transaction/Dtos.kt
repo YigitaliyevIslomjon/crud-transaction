@@ -8,22 +8,17 @@ data class BaseMessage(
     val code: Int,
     val message: String?
 )
-
-
 data class SignInDto(
     val username: String,
     val password: String,
 )
-
 data class AuthDtoResponse(
     val accessToken: String,
     val refreshToken: String,
 )
-
 data class RefreshTokenRequestDto(
     val token: String
 )
-
 data class RefreshTokenResponseDto(
     val token: String
 )
@@ -126,7 +121,7 @@ data class GetProductDto(
 data class CreateUserPaymentTransactionDto(
     val userId: Long,
     val amount: BigDecimal,
-){
+) {
     fun toEntity(user: User): UserPaymentTransaction = UserPaymentTransaction(user, amount, date = Date())
 }
 
@@ -176,8 +171,8 @@ data class GetTransactionItemDto(
     val transactionId: Long
 ) {
     companion object {
-        fun toResponse(transactionItem: TransactionItem): GetTransactionItemDto  = transactionItem.run {
-             GetTransactionItemDto(product!!.id!!, count, amount, transaction!!.id!!)
+        fun toResponse(transactionItem: TransactionItem): GetTransactionItemDto = transactionItem.run {
+            GetTransactionItemDto(product!!.id!!, count, amount, transaction!!.id!!)
         }
     }
 }

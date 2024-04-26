@@ -9,18 +9,20 @@ import java.math.BigDecimal
 class DataLoader(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder
-): CommandLineRunner{
+) : CommandLineRunner {
     override fun run(vararg args: String?) {
         val username = "dev"
         val password = passwordEncoder.encode("123")
         userRepository.findUserByUsername(username) ?: run {
-            userRepository.save(User(
-                fullName = "",
-                username,
-                balance = BigDecimal.ZERO,
-                password,
-                Role.ADMIN
-            ))
+            userRepository.save(
+                User(
+                    fullName = "",
+                    username,
+                    balance = BigDecimal.ZERO,
+                    password,
+                    Role.ADMIN
+                )
+            )
         }
     }
 }

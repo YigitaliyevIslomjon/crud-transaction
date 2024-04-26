@@ -68,6 +68,7 @@ class Configurations {
     fun userDetailsService(userRepository: UserRepository): UserDetailsService {
         return UserDetailsServiceImpl(userRepository)
     }
+
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()

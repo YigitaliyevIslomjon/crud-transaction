@@ -404,7 +404,7 @@ class TransactionItemServiceImpl(
                     .map(GetTransactionItemDto.Companion::toResponse)
             }
         }
-        throw IllegalStateException("user can not access")
+        throw UserAuthorizationFailureException("user can not access")
     }
 
 }

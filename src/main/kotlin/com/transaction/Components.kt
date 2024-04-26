@@ -42,7 +42,7 @@ class JwtAuthFilter(
     private fun String.extractTokenValue() = this.substringAfter("Bearer ")
 
     private fun updateContent(foundUser: UserDetails, request: HttpServletRequest) {
-        
+
         val authToken = UsernamePasswordAuthenticationToken(foundUser, null, foundUser.authorities)
         authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
         SecurityContextHolder.getContext().authentication = authToken

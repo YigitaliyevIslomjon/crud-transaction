@@ -27,6 +27,7 @@ class BaseRepositoryImpl<T : BaseEntity>(
     entityManager: EntityManager,
 ) : SimpleJpaRepository<T, Long>(entityInformation, entityManager), BaseRepository<T> {
     val isNotDeletedSpecification = Specification<T> { root, _, cb -> cb.equal(root.get<Boolean>("deleted"), false) }
+
     @Transactional
     override fun trash(id: Long) = save(findById(id).get().apply { deleted = true })
     override fun findAllNotDeleted(pageable: Pageable) = findAll(isNotDeletedSpecification, pageable)
@@ -34,6 +35,7 @@ class BaseRepositoryImpl<T : BaseEntity>(
     override fun findByIdNotDeleted(id: Long) = findByIdOrNull(id)?.run { if (deleted) null else this }
     override fun trashList(ids: List<Long>): List<T> = ids.map { trash(it) }
 }
+
 interface CategoryRepository : BaseRepository<Category> {
 }
 
@@ -59,7 +61,7 @@ interface TransactionItemRepository : BaseRepository<TransactionItem> {
         value = "SELECT ti.* FROM transaction_item ti " +
                 "INNER JOIN transaction t ON ti.transaction_id = t.id " +
                 "INNER JOIN users u ON t.user_id = u.id " +
-                "WHERE u.username = :username",
+                "WHERE u.username = :username and ti.deleted = false",
         nativeQuery = true
     )
     fun findAllByUsername(username: String): List<TransactionItem>

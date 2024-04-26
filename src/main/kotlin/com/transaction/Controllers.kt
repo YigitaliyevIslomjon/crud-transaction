@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 const val API_PREFIX = "api/v1"
+
 @RestController
 @RequestMapping("$API_PREFIX/auth")
 class AuthController(
