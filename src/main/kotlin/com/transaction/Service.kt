@@ -414,6 +414,7 @@ class UserPaymentTransactionServiceImpl(
     val userRepository: UserRepository,
     val userPaymentTransactionRepository: UserPaymentTransactionRepository
 ) : UserPaymentTransactionService {
+    @Transactional
     override fun create(dto: CreateUserPaymentTransactionDto) = dto.run {
         var user = userRepository.findByIdNotDeleted(dto.userId)
             ?: throw UserNotFoundException("userId ${dto.userId} is not found")
